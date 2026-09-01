@@ -1,6 +1,6 @@
 services:
   cs2-medal-parser:
-    image: kway/cs-medal-parser:latest
+    image: ghcr.io/awhare-club/cs-medal-parser:latest
     # build: .
     container_name: cs-medal-parser
     volumes:

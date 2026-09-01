@@ -75,8 +75,8 @@ uv run ruff check src tests
 ## Docker
 
 ```bash
-docker pull kway/cs-medal-parser:latest
-docker run --rm -v "$(pwd)/data:/app/data" kway/cs-medal-parser:latest
+docker pull ghcr.io/awhare-club/cs-medal-parser:latest
+docker run --rm -v "$(pwd)/data:/app/data" ghcr.io/awhare-club/cs-medal-parser:latest
 ```
 
 Build locally (uv multi-stage image):
@@ -96,7 +96,7 @@ Cron every 15 minutes:
 */15 * * * * docker compose -f /path/to/cs-medal-parser/docker-compose.yml run --rm cs2-medal-parser >> /var/log/medalparser.log 2>&1
 ```
 
-See [.github/DOCKER_SETUP.md](.github/DOCKER_SETUP.md) for Docker Hub publishing.
+See [.github/DOCKER_SETUP.md](.github/DOCKER_SETUP.md) for GHCR publishing.
 
 ## API
 
