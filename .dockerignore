@@ -1,83 +1,35 @@
-# Git and version control
 .git
 .gitignore
 .gitattributes
 
-# Documentation
-README.md
-LICENSE
 *.md
+!README.md
+LICENSE
 
-# Python cache and compiled files
+.github/
+
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
+.ruff_cache/
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
 
-# Distribution / packaging
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-share/python-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
-
-# Virtual environments
+.venv/
 venv/
 env/
-ENV/
-env.bak/
-venv.bak/
 
-# IDE and editor files
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
+.python-version
 
-# OS generated files
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-
-# Data directories (should be mounted as volumes)
+tests/
 data/
 medals/
 responses/
-
-# Test files
-test-re.py
 filtered.json
 
-# Docker files (not needed inside container)
 Dockerfile*
 docker-compose*.yml
 .dockerignore
-
-# Logs
-*.log
-
-# Testing
-.coverage
-.pytest_cache/
-htmlcov/
-
-# mypy
-.mypy_cache/

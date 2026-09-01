@@ -1,127 +1,108 @@
-# CS:GO Medal Parser
+# CS Medal Parser
 
-A high-performance Python application for parsing and downloading CS:GO medals, coins, pins, and badges from the [ByMykel CSGO API](https://github.com/ByMykel/CSGO-API).
+Fetches the Counter-Strike collectible catalog, keeps medals / coins / pins / badges, and downloads normalized images.
 
-## Features
+The folder tree is the product: **catalog**, **collectibles**, **images**, **pipeline**. Not `models` / `services` / `utils`.
 
-- **High-Performance Processing**: Concurrent downloads with configurable worker threads
-- **Intelligent Caching**: Avoids redundant downloads and validates existing images
-- **Automatic Image Processing**: Standardizes images to 256×192 resolution with aspect ratio preservation
-- **Robust Network Handling**: Connection pooling, retry logic, and timeout management
-- **Advanced Logging**: Beautiful structured logging with loguru for enhanced debugging and monitoring
-- **Flexible Configuration**: Easily customizable settings via `config.py`
+```
+src/cs_medal_parser/
+  catalog/        fetch, parse, and persist the CSGO-API catalog
+  collectibles/   collectible, rarity, type filter, batch
+  images/         download, cache, resize/pad medal art
+  http/           retrying session used by catalog + images
+  pipeline/       settings, full run, cached-dump inspect
+```
 
-## Quick Start
+## Why this layout
 
-### Installation
+- A new reader should see *collectibles and medal images*, not a web framework.
+- Each file does one thing. Filter matching is not mixed with HTTP or image I/O.
+- Related code lives together: `images/cache.py` next to `images/normalize.py`.
+- No `utils` / `common` / god-class parser. The pipeline composes the domains.
+
+## Requirements
+
+- Python 3.12+
+- [uv](https://docs.astral.sh/uv/)
+
+## Quick start
 
 ```bash
-git clone https://github.com/tom-jm69/cs-medal-parser.git
+git clone https://github.com/awhare-club/cs-medal-parser.git
 cd cs-medal-parser
-python -m pip install -r requirements.txt
+uv sync
+uv run cs-medal-parser
 ```
 
-### Usage
+Equivalent: `uv run python -m cs_medal_parser`
+
+Inspect the newest cached dump without hitting the network:
 
 ```bash
-python main.py
+uv run cs-medal-parser inspect
 ```
 
-Output files:
+Output:
 
-- **Images**: `data/medals/*.png` (processed collectible images)
-- **API Dumps**: `data/responses/*.json` (timestamped API responses)
-- **Logs**: Beautiful console output with loguru (with optional file logging)
+- **Images**: `data/medals/*.png` (256×192, aspect ratio preserved)
+- **Catalog dumps**: `data/responses/collectibles_*.json`
+- **Inspect output**: `data/responses/filtered.json`
 
 ## Configuration
 
-Customize behavior in `config.py`:
+Settings come from `pipeline/settings.py` and can be overridden with `CS_MEDAL_*` env vars.
 
-```python
-# Performance settings
-MAX_WORKERS = 10          # Concurrent download threads
-REQUEST_TIMEOUT = 30      # Network timeout (seconds)
-MAX_RETRIES = 3          # Retry attempts for failed requests
+| Variable | Default |
+| --- | --- |
+| `CS_MEDAL_COLLECTIBLES_URL` | Current ByMykel catalog (`.../public/api/en/collectibles.json`) |
+| `CS_MEDAL_OUTPUT_FOLDER` | `data/medals` |
+| `CS_MEDAL_DUMP_FOLDER` | `data/responses` |
+| `CS_MEDAL_MAX_WORKERS` | `10` |
+| `CS_MEDAL_REQUEST_TIMEOUT` | `30` |
+| `CS_MEDAL_MAX_RETRIES` | `3` |
+| `CS_MEDAL_TARGET_WIDTH` | `256` |
+| `CS_MEDAL_TARGET_HEIGHT` | `192` |
 
-# Image processing
-TARGET_WIDTH = 256       # Output image width
-TARGET_HEIGHT = 192      # Output image height
+The old `bymykel.github.io/CSGO-API/api/en/collectibles.json` URL is gone (404). The parser now uses the official raw GitHub catalog. Image URLs from the API currently point at the Steam CDN.
 
-# Filter types
-COLLECTIBLE_TYPES = ["pick", "coin", "medal", "pin", "trophy", "badge", "pass", "stars"]
-```
-
-## Docker Deployment
-
-### Pre-built Images (Recommended)
-
-Pull the optimized multi-stage image from Docker Hub:
+## Tests
 
 ```bash
-# Pull latest version
-docker pull kway/cs-medal-parser:latest
-
-# Run directly
-docker run --rm -v $(pwd)/data:/app/data kway/cs-medal-parser:latest
+uv run pytest
+uv run ruff check src tests
 ```
 
-### Build Locally
+## Docker
+
+```bash
+docker pull kway/cs-medal-parser:latest
+docker run --rm -v "$(pwd)/data:/app/data" kway/cs-medal-parser:latest
+```
+
+Build locally (uv multi-stage image):
 
 ```bash
 docker build -t cs-medal-parser .
-docker run --rm -v $(pwd)/data:/app/data cs-medal-parser
+docker run --rm -v "$(pwd)/data:/app/data" cs-medal-parser
 ```
-
-### Docker Compose
 
 ```bash
 docker compose up
 ```
 
-### Automated Builds
-
-🚀 **Automated Docker Hub builds** are configured via GitHub Actions:
-
-- **Any push**: Builds and pushes branch-specific tags
-- **Main branch**: Also gets the `latest` tag
-- **Multi-platform**: Supports `linux/amd64` and `linux/arm64`
-- **Optimized**: 60-70% smaller images using multi-stage builds
-
-See [Docker Setup Guide](.github/DOCKER_SETUP.md) for configuration details.
-
-### Automated Scheduling
-
-Cron job for 15-minute updates:
+Cron every 15 minutes:
 
 ```bash
-*/15 * * * * docker compose -f /path/to/cs-medal-parser/docker-compose.yml run --rm cs2medalparser >> /var/log/medalparser.log 2>&1
+*/15 * * * * docker compose -f /path/to/cs-medal-parser/docker-compose.yml run --rm cs2-medal-parser >> /var/log/medalparser.log 2>&1
 ```
 
-## Testing
-
-```bash
-# Test regex filtering on cached data
-python test-re.py
-```
-
-## Performance
-
-- **Concurrent Processing**: ~10x faster image downloads vs sequential approach
-- **Smart Resource Management**: Connection pooling and request optimization
-- **Failure Resilience**: Automatic retries with exponential backoff
-- **Progress Monitoring**: Real-time status updates and completion statistics
+See [.github/DOCKER_SETUP.md](.github/DOCKER_SETUP.md) for Docker Hub publishing.
 
 ## API
 
-This project uses the **ByMykel CSGO API** for collectible data.  
-Documentation: [https://bymykel.github.io/CSGO-API/](https://bymykel.github.io/CSGO-API/)
-
-## Requirements
-
-- Python 3.12+
-- loguru (for beautiful structured logging)
-- Additional dependencies listed in `requirements.txt`
+Collectible data comes from [ByMykel CSGO-API](https://github.com/ByMykel/CSGO-API).  
+Docs: [https://bymykel.com/CSGO-API/](https://bymykel.com/CSGO-API/)
 
 ## License
 
-GPL-3.0 License - see [LICENSE](LICENSE) file for details.
+GPL-3.0 — see [LICENSE](LICENSE).

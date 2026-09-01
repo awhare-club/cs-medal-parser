@@ -1,13 +1,11 @@
 services:
   cs2-medal-parser:
-    # use prebuilt image from docker hub
     image: kway/cs-medal-parser:latest
-    # uncomment, to build image locally from git repository
     # build: .
     container_name: cs-medal-parser
     volumes:
-      # Persistent data storage for medals and API responses
       - ./data/:/app/data/
     environment:
-      - PYTHONUNBUFFERED=1
+      PYTHONUNBUFFERED: "1"
+      CS_MEDAL_MAX_WORKERS: "10"
     restart: unless-stopped

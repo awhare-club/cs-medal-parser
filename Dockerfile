@@ -1,8 +1,9 @@
-# Multi-stage build for minimal production image
-FROM python:3.13.5-alpine AS builder
+# syntax=docker/dockerfile:1
+FROM python:3.13-alpine AS builder
 
-# Install build dependencies (needed only for building packages)
-RUN apk add --no-cache --virtual .build-deps \
+COPY --from=ghcr.io/astral-sh/uv:0.12.8 /uv /uvx /bin/
+
+RUN apk add --no-cache \
     gcc \
     musl-dev \
     jpeg-dev \
@@ -10,55 +11,47 @@ RUN apk add --no-cache --virtual .build-deps \
     freetype-dev \
     lcms2-dev \
     openjpeg-dev \
-    tiff-dev \
-    tk-dev \
-    tcl-dev
+    tiff-dev
 
-# Set working directory
 WORKDIR /app
 
-# Copy requirements and install Python dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir --user -r requirements.txt
+ENV UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy \
+    UV_PYTHON_DOWNLOADS=0
 
-# Production stage - minimal runtime image
-FROM python:3.13.5-alpine AS runtime
+RUN --mount=type=cache,target=/root/.cache/uv \
+    --mount=type=bind,source=uv.lock,target=uv.lock \
+    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
+    uv sync --locked --no-install-project --no-dev --no-editable
 
-# Install only runtime dependencies (much smaller than build deps)
+COPY README.md pyproject.toml uv.lock ./
+COPY src ./src
+
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --locked --no-dev --no-editable
+
+FROM python:3.13-alpine
+
 RUN apk add --no-cache \
     jpeg \
     zlib \
     freetype \
     lcms2 \
     openjpeg \
-    tiff
+    tiff \
+    && addgroup -g 1000 appgroup \
+    && adduser -u 1000 -G appgroup -s /bin/sh -D appuser
 
-# Create app user for security
-RUN addgroup -g 1000 appgroup && \
-    adduser -u 1000 -G appgroup -s /bin/sh -D appuser
-
-# Set working directory
 WORKDIR /app
 
-# Copy Python packages from builder stage
-COPY --from=builder /root/.local /home/appuser/.local
+COPY --from=builder /app/.venv /app/.venv
 
-# Copy application files
-COPY config.py .
-COPY main.py .
-COPY src/ ./src/
+RUN mkdir -p data/medals data/responses \
+    && chown -R appuser:appgroup /app
 
-# Create data directories and set permissions
-RUN mkdir -p data/medals data/responses && \
-    chown -R appuser:appgroup /app
+ENV PATH="/app/.venv/bin:${PATH}" \
+    PYTHONUNBUFFERED=1
 
-# Set Python path to include src directory
-ENV PYTHONPATH="${PYTHONPATH}:/app/src"
-ENV PATH="/home/appuser/.local/bin:${PATH}"
-
-# Switch to non-root user
 USER appuser
 
-# Set default command
-CMD ["python3", "-u", "main.py"]
+CMD ["cs-medal-parser"]
